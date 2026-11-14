@@ -14,10 +14,11 @@ def _percentile_score(series: pd.Series, higher_is_better: bool = True) -> pd.Se
 
 
 def analyze_driver_dna_and_sectors(year: int, round_num: int = None, session_type: str = 'R'):
-    con = duckdb.connect(DB_PATH)
+    con = duckdb.connect(DB_PATH, read_only=True)
 
     where_clause = f"Year = {year}" + (f" AND RoundNumber = {round_num}" if round_num else "")
     sec_where = f"Year = {year} AND RoundNumber = {round_num} AND SessionType = '{session_type}'" if round_num else f"Year = {year} AND SessionType = 'R'"
+    min_laps_filter = 10 if round_num else 45
 
     sectors_df = con.execute(f"""
         SELECT 
@@ -55,7 +56,7 @@ def analyze_driver_dna_and_sectors(year: int, round_num: int = None, session_typ
             FROM clean_laps
             WHERE {where_clause} AND SessionType = '{session_type}'
             GROUP BY Driver
-            HAVING COUNT(*) >= 10
+            HAVING COUNT(*) >= {min_laps_filter}
         ),
         deg_m AS (
             SELECT Driver, MEDIAN(TyreDegSlope_SecPerLap) AS MedianDegSlope

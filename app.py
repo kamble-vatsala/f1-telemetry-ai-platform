@@ -97,7 +97,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-DB_PATH = "D:/f1-platform-fresh/data/f1_lakehouse.duckdb"
+DB_PATH = "data/f1_lakehouse.duckdb"
 
 TYRE_COLORS = {
     "SOFT": "#FF3333",
