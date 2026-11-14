@@ -138,7 +138,7 @@ def query_df(sql: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=600)
-def cached_telemetry(year: int, round_num: int, session_type: str, driver_lap_tuple: tuple):
+def cached_telemetry(year: int, round_num: int, session_type: str, driver_lap_tuple: tuple, v: int = 3):
     return analyze_session_telemetry(year, round_num, session_type, list(driver_lap_tuple))
 
 
