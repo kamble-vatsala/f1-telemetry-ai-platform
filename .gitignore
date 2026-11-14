@@ -1,0 +1,14 @@
+# Ignore virtual environments & Python cache
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Ignore heavy FastF1 HTTP cache & raw intermediate parquet files
+data/cache/
+data/raw_laps/
+data/raw_results/
+data/raw_rcm/
+data/processed/
+
+# Keep data/f1_lakehouse.duckdb and data/raw_weather/ tracked!
