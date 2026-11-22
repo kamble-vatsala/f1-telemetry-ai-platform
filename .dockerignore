@@ -1,0 +1,24 @@
+# Never pack your local Windows virtual environment (Linux inside Docker builds its own)
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# SECURITY: Never bake your secret GEMINI_API_KEY into a container image!
+# We will pass GEMINI_API_KEY securely inside Cloud Run settings instead.
+.env
+
+# Exclude heavy raw data & FastF1 caches (our app ONLY needs data/f1_lakehouse.duckdb!)
+data/cache/
+data/raw_laps/
+data/raw_results/
+data/raw_weather/
+data/raw_rcm/
+data/bq_export/
+
+# Exclude git history, IDE settings, and one-off inspection scripts
+.git/
+.vscode/
+.streamlit/
+docs_consulting/
+app.py

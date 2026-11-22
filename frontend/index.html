@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Racing F1 — Six Sigma Black Belt Pit-Wall Console v5.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
+    .pit-card { background-color: #131a2a; border: 1px solid #1e293b; border-radius: 0.75rem; }
+    .concept-card { background-color: #0f172a; border: 1px solid #1e293b; border-top: 3px solid #ef4444; border-radius: 0.65rem; padding: 0.9rem 1.1rem; }
+    .graph-summary { background-color: #0f172a; border-left: 4px solid #00F5D4; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.82rem; line-height: 1.55; color: #e2e8f0; }
+    .table-summary { background-color: #0f172a; border-left: 4px solid #FFB703; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.82rem; line-height: 1.55; color: #e2e8f0; }
+    .graph-summary:empty, .table-summary:empty, #tel-gps-track-footer:empty { display: none; }
+    .drv-pill { cursor: pointer; user-select: none; transition: all 0.15s ease; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ==================== 1. TOP PIT-WALL GLOBAL HEADER (FIXED ALIGNMENT) ==================== -->
+  <header class="border-b border-slate-800 bg-slate-950/95 backdrop-blur sticky top-0 z-30">
+    <div class="w-[96%] max-w-[1800px] mx-auto py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-block w-3.5 h-3.5 rounded-full bg-red-500 animate-pulse"></span>
+        <div>
+          <h1 class="text-lg font-extrabold tracking-wide text-white">
+            APEX RACING F1 <span class="text-red-500 font-semibold">| SIX SIGMA PIT-WALL CONSOLE v5.0</span>
+          </h1>
+          <p class="text-xs text-slate-400">2024–2026 Multi-Season DuckDB Lakehouse • 20Hz Telemetry • Engineering Analytics • 10-Model AI/ML</p>
+        </div>
+      </div>
+
+      <!-- Cascading Season -> Track -> Session + Submit Button + Latency Meter -->
+      <div class="flex flex-wrap items-end gap-2.5">
+        <div>
+          <label class="block text-[10px] uppercase text-slate-400 font-bold mb-0.5">Season Year</label>
+          <select id="global-year" onchange="onYearListOnlyChange()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white">
+            <option value="2026">2026 Season</option>
+            <option value="2025" selected>2025 Season</option>
+            <option value="2024">2024 Season</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase text-slate-400 font-bold mb-0.5">Grand Prix / Circuit</label>
+          <select id="global-track" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white min-w-[240px]">
+            <option value="1">Loading Grand Prix calendar...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase text-slate-400 font-bold mb-0.5">Session</label>
+          <select id="global-session" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white">
+            <option value="R" selected>Race (R)</option>
+            <option value="Q">Qualifying (Q)</option>
+            <option value="S">Sprint (S)</option>
+            <option value="FP1">Practice 1 (FP1)</option>
+          </select>
+        </div>
+
+        <button onclick="onSeasonOrTrackChange(false)" class="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-extrabold text-white shadow cursor-pointer">
+          Load Session
+        </button>
+
+        <div id="latency-badge" class="px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-700 text-xs font-mono text-emerald-300">
+          API Latency: <span id="latency-value" class="font-bold">-- ms</span> <span class="text-emerald-500">(Target &lt;250ms)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. SESSION PODIUM & WEATHER BANNER ==================== -->
+  <section class="w-[96%] max-w-[1800px] mx-auto pt-4">
+    <div id="podium-banner" class="grid grid-cols-1 md:grid-cols-4 gap-3"></div>
+  </section>
+
+  <!-- ==================== 3. MAIN WORKSPACE NAVIGATION TABS ==================== -->
+  <nav class="w-[96%] max-w-[1800px] mx-auto pt-4">
+    <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+      <button onclick="switchMainTab('telemetry')" id="tab-btn-telemetry" class="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white">
+        📡 1. 20Hz Telemetry, Corner Apex &amp; GPS Dominance
+      </button>
+      <button onclick="switchMainTab('analytics')" id="tab-btn-analytics" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">
+        🛞 2. Race Engineering, Tyres, Weather &amp; Constructors
+      </button>
+      <button onclick="switchMainTab('ml')" id="tab-btn-ml" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">
+        🤖 3. 10-Model AI / Machine Learning Suite
+      </button>
+      <button onclick="switchMainTab('engineer')" id="tab-btn-engineer" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">
+        🎙️ 4. AI Race Engineer Strategist (2024–2026)
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== 4. FULL-WIDTH SPACIOUS WORKSPACE ==================== -->
+  <main class="w-[96%] max-w-[1800px] mx-auto py-5 flex-1 space-y-6">
+    <section id="workspace-telemetry" class="space-y-6"></section>
+    <section id="workspace-analytics" class="hidden space-y-6"></section>
+    <section id="workspace-ml" class="hidden space-y-6">
+    <section id="workspace-engineer" class="hidden space-y-6"></section>
+      <div class="pit-card p-6 text-sm text-slate-300">Step C Module (`frontend/tabs/tab_ml_suite.js`) will mount here next.</div>
+    </section>
+    <section id="workspace-engineer" class="hidden space-y-6">
+      <div class="pit-card p-6 text-sm text-slate-300">Step C Module (`frontend/tabs/tab_ai_engineer.js`) will mount here next.</div>
+    </section>
+  </main>
+
+  <!-- ==================== 5. SHARED GLOBAL HELPERS ==================== -->
+  <script>
+    window.PitWallState = {
+      year: 2025,
+      round: 1,
+      session: 'R',
+      tracks: [],
+      overview: null,
+      selectedDrivers: ['VER', 'NOR', 'LEC'],
+      activeTab: 'telemetry'
+    };
+
+    window.TYRE_COLORS = {
+      SOFT: '#FF3333', MEDIUM: '#FFE600', HARD: '#E2E8F0',
+      INTERMEDIATE: '#39B54A', WET: '#00AEEF', UNKNOWN: '#94A3B8'
+    };
+
+    window.TEAM_COLORS = {
+      'Red Bull Racing': '#3671C6', 'Ferrari': '#E80020', 'Mercedes': '#27F4D2',
+      'McLaren': '#FF8000', 'Aston Martin': '#229971', 'Alpine': '#0093CC',
+      'Williams': '#64C4FF', 'Racing Bulls': '#6692FF', 'RB': '#6692FF',
+      'Haas F1 Team': '#B6BABD', 'Kick Sauber': '#52E252', 'Audi': '#F50537',
+      'Sauber / Audi': '#52E252', 'Cadillac': '#D4AF37'
+    };
+
+    function recordLatency(ms) {
+      const el = document.getElementById('latency-value');
+      const badge = document.getElementById('latency-badge');
+      el.textContent = `${Math.round(ms)} ms`;
+      badge.className = ms <= 250
+        ? 'px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-700 text-xs font-mono text-emerald-300'
+        : 'px-3 py-1.5 rounded-lg bg-amber-950/80 border border-amber-700 text-xs font-mono text-amber-300';
+    }
+
+    function renderPodiumBanner(ov) {
+      const podium = ov.podium || [];
+      const medals = ['🥇 P1 WINNER', '🥈 P2 PODIUM', '🥉 P3 PODIUM'];
+      const cards = podium.map((p, i) => `
+        <div class="pit-card p-3.5 border-l-4" style="border-left-color: ${p.TeamColor || '#ef4444'}">
+          <div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+            <span>${medals[i] || `P${i+1}`}</span>
+            <span class="font-mono text-emerald-400">${p.Points} pts • ${p.Status}</span>
+          </div>
+          <div class="text-base font-extrabold text-white mt-0.5">${p.FullName} <span class="text-red-400 font-mono">(${p.Driver})</span></div>
+          <div class="text-xs text-slate-400">${p.Team} • Grid P${p.GridPosition ?? '-'}</div>
+        </div>
+      `);
+
+      const weatherTag = ov.is_wet ? '🌧️ Wet / Mixed Session' : '☀️ Dry Session';
+      cards.push(`
+        <div class="pit-card p-3.5 border-l-4 border-l-sky-500">
+          <div class="text-[11px] font-bold text-sky-400 uppercase">${ov.year} R${ov.round_num} — ${ov.location}</div>
+          <div class="text-sm font-extrabold text-white mt-0.5">${ov.event_name}</div>
+          <div class="text-xs text-slate-300 mt-1">${weatherTag} • Track ${ov.track_temp_c ?? '--'}°C • SC: ${ov.sc_count} | VSC: ${ov.vsc_count}</div>
+        </div>
+      `);
+      document.getElementById('podium-banner').innerHTML = cards.join('');
+    }
+
+    // Shared 3-Column Concept & Methodology Card Builder (Matches app.py)
+    function buildConceptHeader(f1Purpose, dsMethod, keyTakeaway) {
+      return `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="concept-card">
+            <div class="text-xs font-bold text-red-400 uppercase tracking-wider">🏎️ Purpose of Analysis &amp; F1 Context</div>
+            <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${f1Purpose || 'Domain engineering analysis.'}</p>
+          </div>
+          <div class="concept-card" style="border-top-color: #38bdf8">
+            <div class="text-xs font-bold text-sky-400 uppercase tracking-wider">🧮 Key Terminologies &amp; Methodology</div>
+            <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${dsMethod || 'Statistical & data science methodology.'}</p>
+          </div>
+          <div class="concept-card" style="border-top-color: #10b981">
+            <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider">💡 Actionable Pit-Wall Insight</div>
+            <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${keyTakeaway || 'Calculated from selected session.'}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Shared Full-Width Prioritized Table Renderer (Used across Tabs 2 & 3)
+    function renderDataTable(rows, orderedCols, renameMap) {
+      if (!rows || !rows.length) {
+        return '<div class="text-xs text-slate-400 py-3">No records available for this session.</div>';
+      }
+      const avail = Object.keys(rows[0]);
+      const cols = (orderedCols && orderedCols.length)
+        ? orderedCols.filter(c => avail.includes(c))
+        : avail;
+      const th = cols.map(c => `<th class="text-left py-2.5 px-3 text-slate-400 border-b border-slate-800 whitespace-nowrap">${(renameMap && renameMap[c]) || c}</th>`).join('');
+      const tr = rows.map(r => `<tr class="hover:bg-slate-900/60">${cols.map(c => `<td class="py-2 px-3 border-b border-slate-800/60 font-mono whitespace-nowrap">${r[c] ?? '-'}</td>`).join('')}</tr>`).join('');
+      return `<div class="max-h-[440px] overflow-auto"><table class="w-full text-xs"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+    }
+
+    async function onYearListOnlyChange() {
+      const year = parseInt(document.getElementById('global-year').value);
+      const res = await fetch(`/api/tracks/${year}`);
+      const data = await res.json();
+      const tracks = data.tracks || [];
+      document.getElementById('global-track').innerHTML = tracks.map(t => `
+        <option value="${t.RoundNumber}">R${t.RoundNumber}: ${t.EventName} (${t.Location})</option>
+      `).join('');
+    }
+
+    async function onSeasonOrTrackChange(yearChanged) {
+      const year = parseInt(document.getElementById('global-year').value);
+      const round = yearChanged ? null : parseInt(document.getElementById('global-track').value || '1');
+      const session = document.getElementById('global-session').value;
+
+      let url = `/api/bootstrap?year=${year}&session_type=${session}`;
+      if (round) url += `&round_num=${round}`;
+
+      const t0 = performance.now();
+      const res = await fetch(url);
+      const data = await res.json();
+      recordLatency(performance.now() - t0);
+
+      PitWallState.year = data.year;
+      PitWallState.round = data.active_round;
+      PitWallState.session = data.session_type;
+      PitWallState.tracks = data.tracks || [];
+      PitWallState.overview = data.overview;
+      PitWallState.selectedDrivers = [...(data.overview.default_drivers || ['VER', 'NOR', 'LEC'])];
+
+      const trackSelect = document.getElementById('global-track');
+      trackSelect.innerHTML = PitWallState.tracks.map(t => `
+        <option value="${t.RoundNumber}" ${t.RoundNumber === data.active_round ? 'selected' : ''}>
+          R${t.RoundNumber}: ${t.EventName} (${t.Location})
+        </option>
+      `).join('');
+
+      renderPodiumBanner(data.overview);
+      refreshActiveWorkspace();
+    }
+
+    function switchMainTab(tabName) {
+      PitWallState.activeTab = tabName;
+      ['telemetry', 'analytics', 'ml', 'engineer'].forEach(t => {
+        document.getElementById(`workspace-${t}`).classList.toggle('hidden', t !== tabName);
+        document.getElementById(`tab-btn-${t}`).className = t === tabName
+          ? 'px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white'
+          : 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700';
+      });
+      refreshActiveWorkspace();
+    }
+
+    function refreshActiveWorkspace() {
+      if (PitWallState.activeTab === 'telemetry' && window.loadTelemetryWorkspace) {
+        window.loadTelemetryWorkspace();
+      } else if (PitWallState.activeTab === 'analytics' && window.loadAnalyticsWorkspace) {
+        window.loadAnalyticsWorkspace();
+      } else if (PitWallState.activeTab === 'ml' && window.loadMLWorkspace) {
+        window.loadMLWorkspace();
+      } else if (PitWallState.activeTab === 'engineer' && window.loadEngineerWorkspace) {
+        window.loadEngineerWorkspace();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => onSeasonOrTrackChange(true));
+  </script>
+
+  <!-- ==================== 6. MODULAR TAB SCRIPTS ==================== -->
+  <script src="/static/tabs/tab_telemetry.js"></script>
+  <script src="/static/tabs/tab_analytics.js"></script>
+  <script src="/static/tabs/tab_ml_suite.js"></script>
+  <script src="/static/tabs/tab_ai_engineer.js"></script>
+</body>
+</html>

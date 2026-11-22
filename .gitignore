@@ -12,3 +12,5 @@ data/raw_rcm/
 data/processed/
 
 # Keep data/f1_lakehouse.duckdb and data/raw_weather/ tracked!
+.env
+data/bq_exports/
